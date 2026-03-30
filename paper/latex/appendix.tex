@@ -1,0 +1,956 @@
+\documentclass[12pt,a4paper]{article}
+
+
+% Encoding and language
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{enumitem}
+
+% Mathematics
+\usepackage{amsmath,amssymb,amsfonts}
+
+% Graphics and figures
+\usepackage{graphicx}
+\graphicspath{{figuras_final/}}
+
+% Tables
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{float}  % For exact positioning with [H]
+
+% Links and references
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue,
+    pdftitle={Reversal and Persistence of Gender Biases in GPT Models},
+    pdfauthor={Otávio Oliveira Bopp}
+}
+
+% Bibliography
+\usepackage{natbib}
+\bibliographystyle{apalike}
+
+% Margins
+\usepackage[margin=2.5cm]{geometry}
+
+% Spacing
+\usepackage{setspace}
+\onehalfspacing
+
+\setcounter{tocdepth}{3}      % Show up to subsubsection in the table of contents
+\setcounter{secnumdepth}{3}   % Number up to subsubsection
+\renewcommand{\contentsname}{Table of Contents}
+
+% For code
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single
+}
+
+% For colored prompt boxes
+\usepackage[most]{tcolorbox}
+\usepackage{xcolor}
+
+% Prompt box definition
+\newtcolorbox{promptbox}[1][]{
+  colback=gray!8,
+  colframe=gray!60,
+  fonttitle=\bfseries\small,
+  title=#1,
+  sharp corners,
+  boxrule=0.8pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fontupper=\small
+}
+
+% Box for prompts without title
+\newtcolorbox{prompt}{
+  colback=gray!8,
+  colframe=gray!60,
+  sharp corners,
+  boxrule=0.8pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fontupper=\small
+}
+
+% Metadata
+\title{Reversal and Persistence of Gender Biases in GPT Models}
+\author{Otávio Oliveira Bopp, Valdemar Pinho Neto}
+\date{2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Appendix}
+
+\subsection{Defining Bias}
+
+% Hide subsubsections of 6.1 from the table of contents
+\addtocontents{toc}{\protect\setcounter{tocdepth}{2}}
+
+
+
+To understand the problem of bias in language models, we will
+adopt an econometric perspective. Consider a hypothetical linear
+regression, which predicts the probability of a candidate being a good
+employee --- based on $i$ characteristics inferred from the résumé
+and other information provided by the candidate, directly or indirectly
+--- such that the candidates with the highest \textit{Y} are called to continue
+the selection process (or even be hired without human
+interference):
+
+\begin{equation}
+Y = \beta_0 + \sum_i (D_i \times \beta_i) + \varepsilon
+\end{equation}
+
+Where \textit{Y} is the dependent variable (the estimated ``quality'' of the
+candidate), $D_i$ are dummy variables indicating the presence of each
+characteristic $i$, and $\beta_i$ are the coefficients that measure the effect of
+each characteristic on the dependent variable, $\varepsilon$ the error and $\beta_0$ the
+intercept.
+
+A regressor model is said to be \textit{unbiased} when the values of the estimated betas
+($\hat{\beta}_i$) are equal to the real betas ($\tilde{\beta}_i$): that is, the
+estimated effect is equal to the real effect of that explanatory variable on the
+dependent variable. Formally:
+
+\begin{equation}
+E[\hat{\beta}_i] = \tilde{\beta}_i \quad \Rightarrow \quad \text{unbiased estimator}
+\end{equation}
+
+Among the $i$ characteristics, our hypothetical model will consider the
+candidate's membership in the so-called ``protected classes''. Protected classes
+are defined legally and may vary across different
+jurisdictions, but aim to prevent discrimination against candidates based on
+characteristics that have historically caused discrimination protected
+class \citep{heymann2020}. Protected classes typically
+include --- but are not limited to --- the candidate's race, gender
+and sexual orientation. We will use the index $p$ to denote
+protected characteristics, distinguishing them from the other characteristics
+$i$.
+
+A model will be called \textit{unbiased with respect to a protected characteristic}
+when its estimated $\hat{\beta}_p$ is equal to zero --- which is taken
+as a hypothesis as the real value $\tilde{\beta}_p$, with exceptions that will be discussed
+in section 2.3. When we mention that a model was ``debiasing'',
+we are saying that measures were taken so that the $\hat{\beta}_p$ of
+protected characteristics approaches $\tilde{\beta}_p$.
+
+The algorithms used in LLMs --- and Machine Learning models in
+general --- do not follow a linear distribution, with well-defined
+explanatory characteristics; rather, they find patterns in large
+amounts of data, forming predictions without explicitly identifying
+the explanatory variables. Even without defined explanatory variables or
+a linear regression, we can infer that artificial intelligence models
+take protected characteristics as part of their thousands
+of latent variables --- given that they can infer these
+characteristics from seemingly neutral information \citep{bai2024}. Thus, the previous definition can be expanded to include
+these effects.
+
+We break down the presence of a protected characteristic $p$ as a
+summation of indicative variables of the ML model that allow inferring the
+presence of that protected characteristic in the candidate. We denote this
+aggregate effect as $\theta_p$:
+
+\begin{equation}
+\theta_p = \sum(\text{indicative variables of } p)
+\end{equation}
+
+The model will be called unbiased when the estimated value $\hat{\theta}_p$ is
+equal to the real value $\tilde{\theta}_p$; which, by hypothesis, should be zero for the
+majority of protected characteristics. When this relationship holds for
+every $p$, the model is called unbiased.
+
+
+\subsubsection{Proxy vs. Ideal --- Defining Discrimination}
+
+
+The hypothesis that $\tilde{\beta}_p = 0$ assumes that, in an ideal world,
+protected characteristics should not affect the quality of a
+candidate. However, observable reality often diverges
+from this ideal. The quotation from \citet{obermeyer2019} in the introduction illustrates
+this problem: the health algorithm did not measure the need for medical
+care (the characteristic that the model ideally tried to measure), but rather historical health
+costs (an observable metric). Because unequal access to the health care system means that less was allocated to
+Black patients, the algorithm systematically underestimated their
+real needs.
+
+We can call regressions with observable metrics --- such as health
+costs, salary, or hiring rate --- \textit{proxy regressions}.
+They indicate a characteristic that is not directly measurable. We will call
+regressions with these unmeasurable characteristics --- such as the real
+need for medical care or the true quality of a
+candidate --- \textit{ideal regressions}. We distinguish the corresponding betas
+as \textit{$\tilde{\beta}_{p,\text{proxy}}$} and \textit{$\tilde{\beta}_{p,\text{ideal}}$}.
+
+From this distinction, we formally define \textit{discrimination} --- or
+\textit{biased reality} --- as the difference between the real beta of a
+proxy regression and the real beta of an ideal regression:
+
+\begin{equation}
+\text{Discrimination} = \tilde{\beta}_{p,\text{proxy}} - \tilde{\beta}_{p,\text{ideal}}
+\end{equation}
+
+By hypothesis, we maintain that, with rare exceptions, protected
+characteristics should have \textit{$\tilde{\beta}_{p,\text{ideal}}$ = 0}. That is, the presence of a
+protected characteristic should not affect the intrinsic quality of a
+candidate. Therefore, outside these exceptions, discrimination emerges
+when:
+
+%\textit{$\tilde{\beta}_{p,\text{proxy}}$ $\neq$ 0 $\neq$ $\tilde{\beta}_{p,\text{ideal}}$}.
+\[
+\tilde{\beta}_{p,\text{proxy}} \neq 0 \neq \tilde{\beta}_{p,\text{ideal}}.
+\]
+
+
+\subsubsection{Exceptions to the Hypothesis $\tilde{\beta}_{p,\text{ideal}}$ = 0}
+
+
+As mentioned earlier, it is not reasonable to believe that the real impact
+of a protected characteristic on a candidate's quality is
+\textit{always} zero. There are clear cases where $\tilde{\beta}_{p,\text{ideal}} \neq 0$. \citet{wang2024} found that explicitly debiased models performed
+worse on tasks where the protected characteristic does not have a
+neutral effect. In the most striking example, a model from the Gemma 2
+family answered that a candidate for rabbi would not be disregarded for being
+Catholic, and not Jewish. In fact, religion is recognized as a
+protected characteristic in hiring contexts; however, in
+certain religious roles, adherence to the corresponding faith constitutes
+a \textit{bona fide occupational qualification} (\textit{bona fide occupational
+qualification} --- BFOQ), being an essential and legitimate requirement for the
+exercise of the position (defined by U.S. legislation in EEOC, CM-625).
+In these specific cases, the protected characteristic is intrinsically
+related to the nature of the role, not constituting arbitrary
+discrimination. That is, $\tilde{\beta}_{p,\text{ideal}} \neq 0$.
+
+Beyond the cases clearly defined as BFOQ, there are countless gray areas
+where it is not evident whether $\tilde{\beta}_{p,\text{ideal}}$ should be zero. In another
+example from \citet{wang2024}, the model from the Claude 3.5 family answered
+that military physical fitness requirements are the same for men and
+women --- women can serve in the armed forces, but have
+legitimate disadvantages related to their physical build. These ambiguous cases
+imply that it is not realistic to expect models to achieve $\hat{\beta}_p = 0$ in all contexts: it is not clear when $\tilde{\beta}_{p,\text{ideal}} \neq 0$, so
+in addition to the usual challenges of bias removal, it is possible to disagree
+about which value would remove bias in any given test.
+
+
+
+% Restore depth to show 6.2.x in the table of contents
+\addtocontents{toc}{\protect\setcounter{tocdepth}{3}}
+
+\subsection{Full Regressions}
+
+\subsubsection{Test 1: Characteristics in the Workplace Environment}
+
+This test examines how models associate positive and
+negative characteristics with the gender of characters in narratives about the workplace
+environment. The dependent variable is is\_male (1 = male, 0 =
+female/other). The main explanatory variable is is\_positive (1 =
+positive characteristic, 0 = negative).
+
+\textit{Note:} *** $p < 0,001$; ** $p < 0,01$; * $p < 0,05$. Base model for
+dummies: gpt-3.5-turbo. Base order for shot order: MF (male
+first).
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 1: Chat Models --- Simple Specification}
+
+\noindent N = 13.653 $|$ $R^2$ = 0,3803 $|$ k = 2
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,8490 & 0,0048 & 177,92 & $<$0,001 & *** \\
+is\_positive & $-$0,6146 & 0,0067 & $-$91,73 & $<$0,001 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: The negative coefficient of is\_positive ($-$0,61) indicates that
+positive characteristics reduce the probability that the character is
+male by 61 percentage points.}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 2: Chat Models --- With Language Control}
+
+\noindent N = 13.653 $|$ $R^2$ = 0,4358 $|$ k = 3
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,7281 & 0,0056 & 130,02 & $<$0,001 & *** \\
+is\_positive & $-$0,6142 & 0,0064 & $-$95,97 & $<$0,001 & *** \\
+is\_portuguese & 0,2349 & 0,0064 & 36,70 & $<$0,001 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: Controlling for language reveals that texts in Portuguese have
+23pp more male characters than in English, but the effect of
+is\_positive remains stable.}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 3: Chat Models --- Portuguese Only}
+
+\noindent N = 7.019 $|$ $R^2$ = 0,3197 $|$ k = 2
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,9245 & 0,0066 & 140,08 & $<$0,001 & *** \\
+is\_positive & $-$0,5372 & 0,0094 & $-$57,15 & $<$0,001 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: In Portuguese, the pro-female bias is attenuated ($\beta$ = $-$0,54
+vs.\ $-$0,61 overall), possibly due to grammatical gender marking.}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 4: Chat Models --- English Only}
+
+\noindent N = 6.634 $|$ $R^2$ = 0,4966 $|$ k = 2
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,7689 & 0,0061 & 126,05 & $<$0,001 & *** \\
+is\_positive & $-$0,6956 & 0,0086 & $-$80,88 & $<$0,001 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+\noindent\textit{Interpretation: In English, the pro-female bias is stronger ($\beta$ = $-$0,70),
+with a higher $R^2$ (0,50 vs.\ 0,32).}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 5: Chat Models --- Full Specification}
+
+\noindent N = 13.653 $|$ $R^2$ = 0,5418 $|$ k = 15
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,3234 & 0,0111 & 29,24 & $<$0,001 & *** \\
+is\_positive & $-$0,6137 & 0,0058 & $-$106,23 & $<$0,001 & *** \\
+is\_portuguese & 0,2428 & 0,0058 & 41,71 & $<$0,001 & *** \\
+model\_gpt-4.1-2025-04-14 & 0,3583 & 0,0145 & 24,67 & $<$0,001 & *** \\
+model\_gpt-4.1-mini-2025-04-14 & 0,4296 & 0,0145 & 29,58 & $<$0,001 & *** \\
+model\_gpt-4.1-nano-2025-04-14 & 0,5875 & 0,0145 & 40,45 & $<$0,001 & *** \\
+model\_gpt-4o-2024-08-06 & 0,4769 & 0,0145 & 32,83 & $<$0,001 & *** \\
+model\_gpt-4o-mini & 0,5120 & 0,0145 & 35,26 & $<$0,001 & *** \\
+model\_gpt-5-mini & 0,3861 & 0,0145 & 26,59 & $<$0,001 & *** \\
+model\_gpt-5-nano & 0,2250 & 0,0145 & 15,49 & $<$0,001 & *** \\
+model\_gpt-5.1-2025-11-13 & 0,4083 & 0,0145 & 28,12 & $<$0,001 & *** \\
+model\_gpt-5.2-2025-12-11 & 0,2610 & 0,0165 & 15,82 & $<$0,001 & *** \\
+model\_o3-2025-04-16 & 0,4204 & 0,0145 & 28,95 & $<$0,001 & *** \\
+model\_o3-mini-2025-01-31 & 0,6694 & 0,0145 & 46,10 & $<$0,001 & *** \\
+model\_o4-mini-2025-04-16 & 0,4204 & 0,0145 & 28,95 & $<$0,001 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: All Chat models show positive, significant coefficients
+relative to gpt-3.5-turbo, indicating a higher proportion of
+male characters. o3-mini is the most extreme (+0,67).}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 6: GPT-3 Legacy --- Simple Specification}
+
+\noindent N = 4.320 $|$ $R^2$ = 0,0012 $|$ k = 2
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,5157 & 0,0108 & 47,75 & $<$0,001 & *** \\
+is\_positive & $-$0,0352 & 0,0152 & $-$2,32 & 0,0207 & * \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: GPT-3 shows an almost neutral bias ($\beta$ = $-$0,04), indicating
+that before mitigation techniques, the model did not exhibit
+overcorrection.}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 7: GPT-3 Legacy --- With Shot Order}
+
+\noindent N = 4.320 $|$ $R^2$ = 0,0039 $|$ k = 5
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,5259 & 0,0170 & 30,94 & $<$0,001 & *** \\
+is\_positive & $-$0,0352 & 0,0152 & $-$2,32 & 0,0206 & * \\
+order\_F & $-$0,0111 & 0,0215 & $-$0,52 & 0,6051 & \\
+order\_FM & $-$0,0500 & 0,0215 & $-$2,33 & 0,0200 & * \\
+order\_M & 0,0204 & 0,0215 & 0,95 & 0,3432 & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: The order of examples in few-shot has a limited effect.
+Only order\_FM is significant (p = 0,02), slightly reducing the
+male proportion.}
+
+
+\subsubsection{Test 2: Feedback Scenarios}
+
+This test examines scenarios where an employee is called into the
+manager's office to receive positive or negative feedback. The dependent
+variable is is\_male (1 = male, 0 = female/other). The main explanatory
+variable is is\_positive (1 = positive feedback, 0 = negative feedback).
+
+\textit{Note:} *** $p < 0,001$; ** $p < 0,01$; * $p < 0,05$. Base model:
+gpt-3.5-turbo. Base order: MF.
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 1: Chat Models --- Simple Specification}
+
+\noindent N = 1.560 $|$ $R^2$ = 0,0813 $|$ k = 2
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,3372 & 0,0142 & 23,75 & $<$0,001 & *** \\
+is\_positive & $-$0,2359 & 0,0201 & $-$11,74 & $<$0,001 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: Positive feedback reduces by 24pp the probability that the
+employee is male, demonstrating a pro-female bias.}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 2: Chat Models --- With Language Control}
+
+\noindent N = 1.560 $|$ $R^2$ = 0,1912 $|$ k = 3
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,4744 & 0,0163 & 29,11 & $<$0,001 & *** \\
+is\_positive & $-$0,2359 & 0,0189 & $-$12,48 & $<$0,001 & *** \\
+is\_portuguese & $-$0,2744 & 0,0189 & $-$14,52 & $<$0,001 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: Portuguese has fewer male characters ($-$27pp),
+reversing the pattern of Test 1. Probably caused by the addition of (a)
+in the prompts of this test.}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 3: Chat Models --- Full Specification}
+
+\noindent N = 1.560 $|$ $R^2$ = 0,2776 $|$ k = 15
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,2551 & 0,0346 & 7,37 & $<$0,001 & *** \\
+is\_positive & $-$0,2359 & 0,0179 & $-$13,18 & $<$0,001 & *** \\
+is\_portuguese & $-$0,2744 & 0,0179 & $-$15,33 & $<$0,001 & *** \\
+model\_gpt-4.1-2025-04-14 & 0,2417 & 0,0456 & 5,30 & $<$0,001 & *** \\
+model\_gpt-4.1-mini-2025-04-14 & 0,1583 & 0,0456 & 3,47 & 0,0005 & *** \\
+model\_gpt-4.1-nano-2025-04-14 & 0,3917 & 0,0456 & 8,59 & $<$0,001 & *** \\
+model\_gpt-4o-2024-08-06 & 0,2750 & 0,0456 & 6,03 & $<$0,001 & *** \\
+model\_gpt-4o-mini & 0,0750 & 0,0456 & 1,64 & 0,1004 & \\
+model\_gpt-5-mini & 0,1917 & 0,0456 & 4,20 & $<$0,001 & *** \\
+model\_gpt-5-nano & 0,2167 & 0,0456 & 4,75 & $<$0,001 & *** \\
+model\_gpt-5.1-2025-11-13 & 0,3083 & 0,0456 & 6,76 & $<$0,001 & *** \\
+model\_gpt-5.2-2025-12-11 & 0,0667 & 0,0456 & 1,46 & 0,1441 & \\
+model\_o3-2025-04-16 & 0,2500 & 0,0456 & 5,48 & $<$0,001 & *** \\
+model\_o3-mini-2025-01-31 & 0,4500 & 0,0456 & 9,87 & $<$0,001 & *** \\
+model\_o4-mini-2025-04-16 & 0,2250 & 0,0456 & 4,93 & $<$0,001 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: Two models are not significant: gpt-4o-mini and
+gpt-5.2. o3-mini again is the most extreme (+0,45).}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 4: Chat Models --- Portuguese Only}
+
+\noindent N = 780 $|$ $R^2$ = 0,0171 $|$ k = 2
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,1179 & 0,0138 & 8,54 & $<$0,001 & *** \\
+is\_positive & $-$0,0718 & 0,0195 & $-$3,68 & 0,0002 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: In Portuguese, the effect is attenuated ($\beta$ = $-$0,07 vs.\ $-$0,24
+overall), with $R^2$ close to zero, but a highly significant p-value.
+Attenuation is possibly the result of adding (a) in the prompt.}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 5: Chat Models --- English Only}
+
+\noindent N = 780 $|$ $R^2$ = 0,1744 $|$ k = 2
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,5564 & 0,0221 & 25,18 & $<$0,001 & *** \\
+is\_positive & $-$0,4000 & 0,0312 & $-$12,82 & $<$0,001 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: High bias in English ($\beta$ = $-$0,40).}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 6: GPT-3 Legacy --- Simple Specification}
+
+\noindent N = 480 $|$ $R^2$ = 0,0000 $|$ k = 2
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,5417 & 0,0322 & 16,82 & $<$0,001 & *** \\
+is\_positive & $-$0,0042 & 0,0456 & $-$0,09 & 0,9272 & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: GPT-3 is neutral ($\beta \approx 0$, p = 0,93). There is no association
+between feedback valence and gender.}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 7: GPT-3 Legacy --- With Shot Order}
+
+\noindent N = 480 $|$ $R^2$ = 0,0554 $|$ k = 5
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,6104 & 0,0497 & 12,28 & $<$0,001 & *** \\
+is\_positive & $-$0,0042 & 0,0445 & $-$0,09 & 0,9254 & \\
+order\_F & $-$0,2667 & 0,0629 & $-$4,24 & $<$0,001 & *** \\
+order\_FM & $-$0,0417 & 0,0629 & $-$0,66 & 0,5078 & \\
+order\_M & 0,0333 & 0,0629 & 0,53 & 0,5962 & \\
+\bottomrule
+\end{tabular}
+\end{table}
+\noindent\textit{Interpretation: The F order (female only) has a strong effect
+($-$0.27***), reducing the male proportion. It demonstrates GPT-3's
+sensitivity to examples.}
+
+
+\subsubsection{Test 3: Occupational Associations}
+
+%This test examines how the models associate different professions with
+%gender, varying the power level (high/low) of the occupations. The dependent variable
+%is is\_male. The main explanatory variable is is\_high\_power
+%(1 = high hierarchy, 0 = low).
+
+\textit{Note:} *** $p < 0,001$; ** $p < 0,01$; * $p < 0,05$. Base sector:
+General. Base model: gpt-3.5-turbo. Base order: MF.
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 1: Chat Models --- Power Level Only}
+
+\noindent N = 7.560 $|$ $R^2$ = 0,0004 $|$ k = 2
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,2710 & 0,0071 & 38,17 & $<$0,001 & *** \\
+is\_high\_power & 0,0171 & 0,0103 & 1,66 & 0,0979 & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: Without controls, is\_high\_power is not significant (p =
+0.10), suggesting that gender composition varies more by specific profession
+than by hierarchical level.}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 2: Chat Models --- With Sector Control}
+
+\noindent N = 7.560 $|$ $R^2$ = 0,1553 $|$ k = 6
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,6877 & 0,0161 & 42,72 & $<$0,001 & *** \\
+is\_high\_power & 0,0274 & 0,0095 & 2,88 & 0,0040 & ** \\
+sector\_Academic & $-$0,5417 & 0,0217 & $-$24,96 & $<$0,001 & *** \\
+sector\_Aviation & $-$0,6014 & 0,0217 & $-$27,71 & $<$0,001 & *** \\
+sector\_Corporate & $-$0,5465 & 0,0172 & $-$31,77 & $<$0,001 & *** \\
+sector\_Service & $-$0,3137 & 0,0174 & $-$18,03 & $<$0,001 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: Controlling for sector, is\_high\_power becomes
+significant (+2.7pp). Aviation is the most feminized sector ($-$60pp vs.\
+General), followed by Corporate and Academic.}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 3: Chat Models --- Full Specification}
+
+\noindent N = 7.560 $|$ $R^2$ = 0,2138 $|$ k = 17
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,5229 & 0,0217 & 24,10 & $<$0,001 & *** \\
+is\_high\_power & 0,0274 & 0,0092 & 2,98 & 0,0029 & ** \\
+sector\_Academic & $-$0,5417 & 0,0210 & $-$25,79 & $<$0,001 & *** \\
+sector\_Aviation & $-$0,6014 & 0,0210 & $-$28,64 & $<$0,001 & *** \\
+sector\_Corporate & $-$0,5465 & 0,0166 & $-$32,92 & $<$0,001 & *** \\
+sector\_Service & $-$0,3137 & 0,0168 & $-$18,67 & $<$0,001 & *** \\
+model\_gpt-4.1-2025-04-14 & 0,1254 & 0,0224 & 5,60 & $<$0,001 & *** \\
+model\_gpt-4.1-mini-2025-04-14 & 0,1032 & 0,0224 & 4,61 & $<$0,001 & *** \\
+model\_gpt-4.1-nano-2025-04-14 & 0,1984 & 0,0224 & 8,86 & $<$0,001 & *** \\
+model\_gpt-4o-2024-08-06 & 0,2508 & 0,0224 & 11,20 & $<$0,001 & *** \\
+model\_gpt-4o-mini & 0,1524 & 0,0224 & 6,80 & $<$0,001 & *** \\
+model\_gpt-5-mini & 0,1810 & 0,0224 & 8,08 & $<$0,001 & *** \\
+model\_gpt-5-nano & 0,0206 & 0,0224 & 0,92 & 0,3577 & \\
+model\_gpt-5.1-2025-11-13 & 0,3079 & 0,0224 & 13,75 & $<$0,001 & *** \\
+model\_o3-2025-04-16 & 0,1635 & 0,0224 & 7,30 & $<$0,001 & *** \\
+model\_o3-mini-2025-01-31 & 0,3921 & 0,0224 & 17,51 & $<$0,001 & *** \\
+model\_o4-mini-2025-04-16 & 0,0825 & 0,0224 & 3,68 & 0,0002 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: gpt-5-nano is the only non-significant model. The
+o3-mini is the most male (+0.39), and all models generate more men
+than the base model --- gpt-3.5-turbo.}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 4: GPT-3 Legacy --- Power Level Only}
+
+\noindent N = 5.040 $|$ $R^2$ = 0,0391 $|$ k = 2
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,3587 & 0,0095 & 37,76 & $<$0,001 & *** \\
+is\_high\_power & 0,1971 & 0,0138 & 14,28 & $<$0,001 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: GPT-3 shows a strong traditional bias: high-hierarchy
+positions have +20pp male characters. This is the expected pattern
+before mitigation.}
+\vspace{0.5cm}
+\noindent\textbf{Regression 5: GPT-3 Legacy --- With Shot Order}
+
+\noindent N = 5.040 $|$ $R^2$ = 0,0438 $|$ k = 5
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,3934 & 0,0152 & 25,88 & $<$0,001 & *** \\
+is\_high\_power & 0,1971 & 0,0137 & 14,39 & $<$0,001 & *** \\
+order\_F & $-$0,0468 & 0,0194 & $-$2,41 & 0,0158 & * \\
+order\_FM & $-$0,0849 & 0,0194 & $-$4,38 & $<$0,001 & *** \\
+order\_M & $-$0,0071 & 0,0194 & $-$0,37 & 0,7128 & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: Shot order has a moderate effect. FM reduces the male
+proportion ($-$8,5pp), suggesting sensitivity to examples.}
+
+\vspace{0.5cm}
+\noindent\textbf{Regression 6: GPT-3 Legacy --- Full Specification}
+
+\noindent N = 5.040 $|$ $R^2$ = 0,0614 $|$ k = 9
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Variable} & \textbf{Coef.} & \textbf{SE} & \textbf{t} & \textbf{p-value} & \textbf{Sig.} \\
+\midrule
+Intercept & 0,5684 & 0,0259 & 21,95 & $<$0,001 & *** \\
+is\_high\_power & 0,1993 & 0,0136 & 14,66 & $<$0,001 & *** \\
+order\_F & $-$0,0468 & 0,0192 & $-$2,44 & 0,0149 & * \\
+order\_FM & $-$0,0849 & 0,0192 & $-$4,42 & $<$0,001 & *** \\
+order\_M & $-$0,0071 & 0,0192 & $-$0,37 & 0,7103 & \\
+sector\_Academic & $-$0,1812 & 0,0312 & $-$5,81 & $<$0,001 & *** \\
+sector\_Aviation & $-$0,2021 & 0,0312 & $-$6,48 & $<$0,001 & *** \\
+sector\_Corporate & $-$0,2318 & 0,0246 & $-$9,42 & $<$0,001 & *** \\
+sector\_Service & $-$0,1536 & 0,0250 & $-$6,14 & $<$0,001 & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Interpretation: Even controlling for sector, the power level effect
+remains strong (+20pp). All sectors have negative coefficients vs.\
+General.}
+
+\vspace{0.5cm}
+\noindent\textbf{Complete Table: \% Male by Profession and Model}
+
+The table below presents the percentage of male characters
+generated for each profession in each model. Values in red indicate
+strong female bias ($<$ 20\%), values in blue indicate strong
+male bias ($>$ 80\%).
+
+\vspace{0.5cm}
+\newpage
+\noindent\textbf{Part A: GPT-3 Legacy Models}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrr}
+\toprule
+\textbf{Profession} & \textbf{davinci-002} & \textbf{babbage-002} \\
+\midrule
+blue collar worker & 75,8 & 76,5 \\
+janitor & 72,5 & 65,8 \\
+dishwasher & 50,8 & 47,5 \\
+chef & 60,8 & 45,8 \\
+white collar worker & 54,2 & 47,9 \\
+executive & 63,3 & 48,3 \\
+director & 62,5 & 52,5 \\
+CEO & 65,8 & 50,0 \\
+hotel manager & 50,8 & 55,8 \\
+manager & 58,3 & 53,3 \\
+pilot & 69,2 & 65,5 \\
+store manager & 47,5 & 50,8 \\
+teacher & 39,2 & 30,8 \\
+professor & 60,8 & 50,0 \\
+intern & 48,3 & 44,5 \\
+cashier & 41,7 & 38,3 \\
+assistant & 30,8 & 29,2 \\
+flight attendant & 15,0 & 23,7 \\
+housekeeper & 13,3 & 11,7 \\
+receptionist & 11,7 & 8,4 \\
+secretary & 10,0 & 5,8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.5cm}
+\newpage
+\noindent\textbf{Part B: Early Chat Models (3.5, 4o)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Profession} & \textbf{3.5-turbo} & \textbf{4o} & \textbf{4o-mini} \\
+\midrule
+blue collar worker & 93,3 & 100,0 & 100,0 \\
+janitor & 73,3 & 93,3 & 100,0 \\
+dishwasher & 26,7 & 86,7 & 50,0 \\
+chef & 6,7 & 43,3 & 93,3 \\
+white collar worker & 0,0 & 73,3 & 50,0 \\
+executive & 13,3 & 50,0 & 16,7 \\
+director & 3,3 & 46,7 & 36,7 \\
+CEO & 3,3 & 30,0 & 26,7 \\
+hotel manager & 0,0 & 40,0 & 3,3 \\
+manager & 0,0 & 46,7 & 30,0 \\
+pilot & 0,0 & 56,7 & 6,7 \\
+store manager & 3,3 & 23,3 & 30,0 \\
+teacher & 3,3 & 26,7 & 13,3 \\
+professor & 6,7 & 6,7 & 0,0 \\
+intern & 3,3 & 13,3 & 3,3 \\
+cashier & 0,0 & 3,3 & 0,0 \\
+assistant & 3,3 & 13,3 & 0,0 \\
+flight attendant & 0,0 & 13,3 & 0,0 \\
+housekeeper & 0,0 & 0,0 & 0,0 \\
+receptionist & 0,0 & 0,0 & 0,0 \\
+secretary & 0,0 & 0,0 & 0,0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\vspace{0.5cm}
+\newpage
+\noindent\textbf{Part C: GPT-4.1 Series}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Profession} & \textbf{4.1} & \textbf{4.1-mini} & \textbf{4.1-nano} \\
+\midrule
+blue collar worker & 100,0 & 100,0 & 100,0 \\
+janitor & 100,0 & 96,7 & 86,7 \\
+dishwasher & 83,3 & 56,7 & 66,7 \\
+chef & 80,0 & 90,0 & 76,7 \\
+white collar worker & 36,7 & 26,7 & 10,0 \\
+executive & 16,7 & 26,7 & 63,3 \\
+director & 13,3 & 6,7 & 13,3 \\
+CEO & 10,0 & 3,3 & 46,7 \\
+hotel manager & 6,7 & 10,0 & 40,0 \\
+manager & 16,7 & 6,7 & 3,3 \\
+pilot & 3,3 & 30,0 & 40,0 \\
+store manager & 6,7 & 3,3 & 0,0 \\
+teacher & 16,7 & 0,0 & 96,7 \\
+professor & 0,0 & 0,0 & 10,0 \\
+intern & 0,0 & 0,0 & 3,3 \\
+cashier & 0,0 & 0,0 & 0,0 \\
+assistant & 13,3 & 0,0 & 0,0 \\
+flight attendant & 0,0 & 0,0 & 0,0 \\
+housekeeper & 0,0 & 0,0 & 0,0 \\
+receptionist & 0,0 & 0,0 & 0,0 \\
+secretary & 0,0 & 0,0 & 0,0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.5cm}
+\newpage
+\noindent\textbf{Part D: GPT-5 Series}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Profession} & \textbf{5-mini} & \textbf{5-nano} & \textbf{5.1} \\
+\midrule
+blue collar worker & 100,0 & 96,7 & 100,0 \\
+janitor & 93,3 & 66,7 & 100,0 \\
+dishwasher & 90,0 & 23,3 & 90,0 \\
+chef & 66,7 & 16,7 & 90,0 \\
+white collar worker & 43,3 & 10,0 & 100,0 \\
+executive & 33,3 & 0,0 & 53,3 \\
+director & 46,7 & 6,7 & 30,0 \\
+CEO & 20,0 & 3,3 & 80,0 \\
+hotel manager & 30,0 & 3,3 & 56,7 \\
+manager & 13,3 & 16,7 & 43,3 \\
+pilot & 6,7 & 20,0 & 0,0 \\
+store manager & 26,7 & 3,3 & 53,3 \\
+teacher & 10,0 & 3,3 & 23,3 \\
+professor & 20,0 & 3,3 & 10,0 \\
+intern & 13,3 & 3,3 & 6,7 \\
+cashier & 3,3 & 3,3 & 50,0 \\
+assistant & 3,3 & 3,3 & 0,0 \\
+flight attendant & 0,0 & 0,0 & 0,0 \\
+housekeeper & 0,0 & 0,0 & 0,0 \\
+receptionist & 0,0 & 0,0 & 0,0 \\
+secretary & 0,0 & 0,0 & 0,0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.5cm}
+\newpage
+\noindent\textbf{Part E: o3/o4 Series}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Profession} & \textbf{o3-04-16} & \textbf{o3-mini-01-31} & \textbf{o4-mini-04-16} \\
+\midrule
+blue collar worker & 90,0 & 100,0 & 90,0 \\
+janitor & 93,3 & 100,0 & 73,3 \\
+dishwasher & 90,0 & 96,7 & 50,0 \\
+chef & 43,3 & 100,0 & 20,0 \\
+white collar worker & 76,7 & 60,0 & 26,7 \\
+executive & 13,3 & 80,0 & 23,3 \\
+director & 23,3 & 90,0 & 16,7 \\
+CEO & 10,0 & 76,7 & 13,3 \\
+hotel manager & 30,0 & 46,7 & 10,0 \\
+manager & 26,7 & 46,7 & 16,7 \\
+pilot & 3,3 & 46,7 & 13,3 \\
+store manager & 33,3 & 53,3 & 20,0 \\
+teacher & 13,3 & 26,7 & 6,7 \\
+professor & 13,3 & 53,3 & 20,0 \\
+intern & 6,7 & 26,7 & 10,0 \\
+cashier & 6,7 & 23,3 & 3,3 \\
+assistant & 6,7 & 36,7 & 0,0 \\
+flight attendant & 0,0 & 0,0 & 0,0 \\
+housekeeper & 0,0 & 0,0 & 0,0 \\
+receptionist & 3,3 & 0,0 & 0,0 \\
+secretary & 0,0 & 0,0 & 0,0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\vspace{0.5cm}
+\noindent\textbf{Summary of Test 3}
+
+Test 3 reveals two complementary patterns. First, in the Chat
+models, the is\_high\_power effect is small (+2,7pp) but significant,
+indicating that overcorrection partially attenuated occupational
+stereotypes. Second, in the GPT-3 Legacy models, the effect is 7x larger
+(+20pp), demonstrating the traditional bias that associates high-ranking
+positions with men.
+
+Despite this attenuation, associations between professions: \textit{secretary} are 0\%
+male and \textit{blue collar worker} 100\% male in multiple Chat
+models.
+
+\end{document}
